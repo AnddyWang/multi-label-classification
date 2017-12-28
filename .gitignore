@@ -99,3 +99,7 @@ ENV/
 
 # mypy
 .mypy_cache/
+
+#pengkai wang
+inception_resnet_v2_2016_08_30.ckpt
+.idea
