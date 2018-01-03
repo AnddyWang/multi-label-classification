@@ -1,0 +1,14 @@
+comic
+travel
+home
+military
+fashion
+dog
+cat
+model
+food
+other
+child
+sports
+car
+textarea
