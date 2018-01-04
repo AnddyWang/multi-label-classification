@@ -18,7 +18,7 @@ if __name__=='__main__':
     #parser.add_argument('--image_label_dir',type=str,default='./image_label_dir',help='image label dir')
     #parser.add_argument('--output_dir', type=str, default='./', help='output dir')
     parser.add_argument('--data_dir',type=str,default='/data0/users/pengkai1/datasets/MultiLabel/images',help='data directory')
-    parser.add_argument('--image_label_dir',type=str,default='/data0/users/pengkai1/datasets/MultiLabel/images',help='image label dir')
+    parser.add_argument('--image_label_dir',type=str,default='/data0/users/pengkai1/datasets/MultiLabel/image_label_dir',help='image label dir')
     parser.add_argument('--output_dir', type=str, default='/data0/users/pengkai1/datasets/MultiLabel', help='output dir')
     args = parser.parse_args();
 
