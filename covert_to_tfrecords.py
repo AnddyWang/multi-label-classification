@@ -2,6 +2,7 @@
 import os
 import tensorflow as tf
 import numpy as np
+from PIL import Image
 
 os.environ['CUDA_VISIBLE_DEVICES']='1'
 
@@ -17,7 +18,7 @@ FLAGS=tf.app.flags.FLAGS
 def parse_label_to_list(label_list,labels_file):
     pass
     labels_list_file = open(os.path.join(FLAGS.output_dir, label_list), 'r')
-    all_labels_file = open(os.path.join(FLAGS.output_dir, labels_file), 'r')
+    all_labels_file = open(labels_file, 'r')
     all_labels=[line.strip() for line in all_labels_file.readlines()]
 
     labels=[]
@@ -28,11 +29,12 @@ def parse_label_to_list(label_list,labels_file):
         for part in parts:
             encoded_label[get_label_index(part,all_labels)]=1.0
         labels.append(encoded_label.tostring())
+    return labels
 
 #get the index of label in the all labels list
-def get_label_index(label,labels):
+def get_label_index(label,all_labels):
     label_index = -1
-    for index , value in labels:
+    for index , value in enumerate(all_labels):
         if label == value:
             label_index = index
             break
@@ -45,17 +47,31 @@ def convert_to_tfrecords(category,image_list_file,label_list_file,labels_file):
     with tf.python_io.TFRecordWriter(category) as tf_writer:
         for index,value in enumerate([image_list.strip() for image_list in image_file.readlines()]):
             label=labels[index]
+            image_raw=Image.open(os.path.join(FLAGS.data_dir,'images',value))
+            image_shape=np.array(image_raw).shape
+            image_data=image_raw.tobytes()
+            print(image_shape)
+            """
             image_data=tf.gfile.FastGFile(os.path.join(FLAGS.data_dir,'images',value),'r').read()
+            image_raw=tf.image.decode_jpeg(image_data)
+            with tf.Session() as sess:
+                image_raw=sess.run(image_raw)
+            print(image_raw.shape)
+            continue
+            """
 
             #use the example proto
             example=tf.train.Example(features=tf.train.Features(feature={
                 'image_data' : tf.train.Feature(bytes_list=tf.train.BytesList(value=[image_data])),
+                'image_height': tf.train.Feature(int64_list=tf.train.Int64List(value=[image_shape[0]])),
+                'image_width': tf.train.Feature(int64_list=tf.train.Int64List(value=[image_shape[1]])),
+                'image_channel': tf.train.Feature(int64_list=tf.train.Int64List(value=[image_shape[2]])),
                 'image_label' : tf.train.Feature(bytes_list=tf.train.BytesList(value=[label]))
             }))
             tf_writer.write(example.SerializeToString())
 
 
-def main():
+def main(unused_argv):
     convert_to_tfrecords(FLAGS.train_tfrecords,'train_lists.txt', 'train_labels.txt', FLAGS.labels_file)
     convert_to_tfrecords(FLAGS.test_tfrecords,'test_lists.txt', 'test_labels.txt', FLAGS.labels_file)
 
