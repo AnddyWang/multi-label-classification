@@ -15,7 +15,7 @@ tf.app.flags.DEFINE_integer('num_classes',14,'the number of classes')
 tf.app.flags.DEFINE_string('train_tfrecords','/data0/users/pengkai1/datasets/MultiLabel/train.tfrecords','train_tfrecords')
 tf.app.flags.DEFINE_string('test_tfrecords','/data0/users/pengkai1/datasets/MultiLabel/test.tfrecords','test_tfrecords')
 tf.app.flags.DEFINE_float('learning_rate',0.001,'the learning rate of the network')
-tf.app.flags.DEFINE_integer('batch_size',20,'the batch size during training the network')
+tf.app.flags.DEFINE_integer('batch_size',4,'the batch size during training the network')
 tf.app.flags.DEFINE_integer('epoch',60,'the epoch of training')
 tf.app.flags.DEFINE_string('checkpoint','inception_resnet_v2_2016_08_30.ckpt','checkpoint file')
 tf.app.flags.DEFINE_string('output_model_dir','output_model_dir','out model dir')
@@ -55,20 +55,8 @@ def parse_single_image(train_tfrecords):
     return image_data,image_label
     pass
 
-#config=tf.ConfigProto()
-#config.gpu_options.per_process_gpu_memory_fraction=0.3
-def get_init_fn(checkpoint):
-    exclude_scopes = ['InceptionResnetV2/AuxLogits', 'InceptionResnetV2/Logits']
-    variables_to_restore=[]
-    for var in slim.get_model_variables():
-        excluded=False
-        for exclude_scope in exclude_scopes:
-            if var.op.name.startswith(exclude_scope):
-                excluded=True
-                break
-        if not excluded:
-            variables_to_restore.append(var)
-    return slim.assign_from_checkpoint_fn(checkpoint, variables_to_restore)
+config=tf.ConfigProto()
+config.gpu_options.per_process_gpu_memory_fraction=0.3
 
 def main(unused_argv):
     with tf.Graph().as_default():
@@ -79,46 +67,17 @@ def main(unused_argv):
         image = tf.image.resize_images(image, [image_size, image_size])
         images, labels = tf.train.shuffle_batch([image, label], batch_size=FLAGS.batch_size, num_threads=2,
                                                 capacity=50000, min_after_dequeue=10000)
-        print(images)
-        print(labels)
-        with tf.Session() as sess:
+        with tf.Session(config=config) as sess:
             coord = tf.train.Coordinator()
-            print('Session')
-            threads = tf.train.start_queue_runners(sess=sess, coord=coord)
+            threads=tf.train.start_queue_runners(sess=sess, coord=coord)
+            images = sess.run(images)
+            labels = sess.run(labels)
+            #print(image)
+            print(images.shape)
+            print(labels)
             coord.request_stop()
             coord.join(threads)
-
-        # create the model
-        with slim.arg_scope(inception_resnet_v2_arg_scope()):
-            logits, _ = inception_resnet_v2(images, num_classes=FLAGS.num_classes, is_training=True)
-        predictions = tf.nn.sigmoid(logits, name='predictions')
-        cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(labels=labels, logits=logits)
-        loss = tf.reduce_mean(cross_entropy)
-
-        #print(global_step)
-
-        optimizer = tf.train.GradientDescentOptimizer(learning_rate=FLAGS.learning_rate, name='GradientDescent')
-        global_steps = tf.Variable(0, name='global_steps', trainable=False)
-
-        trainable_scopes = ['InceptionResnetV2/AuxLogits', 'InceptionResnetV2/Logits']
-        variables_to_train = []
-        for trainable_scope in trainable_scopes:
-            variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, trainable_scope)
-            variables_to_train.extend(variables)
-
-
-        train_op = slim.learning.create_train_op(loss, optimizer, variables_to_train=variables_to_train, global_step=global_steps)
-
-        #variables_to_restore = slim.get_variables_to_restore(exclude=trainable_scopes)
-        #init_fn = slim.assign_from_checkpoint_fn(FLAGS.checkpoint, variables_to_restore)
-
-        steps_per_epoch = math.ceil(26887 / FLAGS.batch_size)
-        number_of_steps = FLAGS.epoch * int(steps_per_epoch)
-
-        slim.learning.train(train_op, FLAGS.output_model_dir, init_fn=get_init_fn(FLAGS.checkpoint), number_of_steps=number_of_steps, global_step=global_steps)
-
-        #print('loss=%f', loss.eval(session=sess))
-        #sess.close()
+        pass
 
 
 '''
