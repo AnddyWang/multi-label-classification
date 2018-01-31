@@ -7,10 +7,10 @@ from PIL import Image
 os.environ['CUDA_VISIBLE_DEVICES']='1'
 
 tf.app.flags.DEFINE_string('data_dir','/data0/users/pengkai1/datasets/MultiLabel','image_list')
-tf.app.flags.DEFINE_string('train_tfrecords','/data0/users/pengkai1/datasets/MultiLabel/train.tfrecords','train_tfrecords')
-tf.app.flags.DEFINE_string('test_tfrecords','/data0/users/pengkai1/datasets/MultiLabel/test.tfrecords','test_tfrecords')
-tf.app.flags.DEFINE_string('labels_file','labels.txt','labels_file')
-tf.app.flags.DEFINE_string('output_dir', '/data0/users/pengkai1/datasets/MultiLabel', 'output dir')
+tf.app.flags.DEFINE_string('train_tfrecords','/data0/users/pengkai1/datasets/MultiLabelImage/train.tfrecords','train_tfrecords')
+tf.app.flags.DEFINE_string('test_tfrecords','/data0/users/pengkai1/datasets/MultiLabelImage/test.tfrecords','test_tfrecords')
+tf.app.flags.DEFINE_string('labels_file','data/labels.txt','labels_file')
+tf.app.flags.DEFINE_string('output_dir', '/data0/users/pengkai1/datasets/MultiLabelImage', 'output dir')
 tf.app.flags.DEFINE_integer('num_classes',14,'the number of classes')
 
 FLAGS=tf.app.flags.FLAGS
