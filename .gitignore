@@ -104,3 +104,4 @@ ENV/
 inception_resnet_v2_2016_08_30.ckpt
 .idea/
 *.log
+datasets/

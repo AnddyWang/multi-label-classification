@@ -13,12 +13,13 @@ os.environ['CUDA_VISIBLE_DEVICES']='1'
 image_size=inception_resnet_v2.default_image_size
 
 tf.app.flags.DEFINE_integer('num_classes', 14, 'the number of classes')
-tf.app.flags.DEFINE_string('train_tfrecords' , '/data0/users/pengkai1/datasets/MultiLabel/train.tfrecords','train_tfrecords')
-tf.app.flags.DEFINE_float('learning_rate', 0.00001, 'the learning rate of the network')
-tf.app.flags.DEFINE_integer('batch_size',32, 'the batch size during training the network')
-tf.app.flags.DEFINE_integer('epoch', 60, 'the epoch of training')
+tf.app.flags.DEFINE_string('train_tfrecords', '/data0/users/pengkai1/datasets/MultiLabel/train.tfrecords','train_tfrecords')
+tf.app.flags.DEFINE_float('learning_rate', 0.0001, 'the learning rate of the network')
+tf.app.flags.DEFINE_integer('batch_size', 20, 'the batch size during training the network')
+tf.app.flags.DEFINE_integer('epoch', 30, 'the epoch of training')
 tf.app.flags.DEFINE_string('checkpoint', 'inception_resnet_v2_2016_08_30.ckpt', 'checkpoint file')
 tf.app.flags.DEFINE_string('finetune_output_model_dir', 'finetune_output_model_dir', 'finetune out model dir')
+tf.app.flags.DEFINE_string('log_dir','log_dir','log dir')
 tf.app.flags.DEFINE_float('threshold', 0.5, 'threshold for training and testing')
 
 FLAGS=tf.app.flags.FLAGS
@@ -82,10 +83,10 @@ def main(unused_argv):
         image = inception_preprocessing.preprocess_image(image, image_size, image_size,
                                                          is_training=True)
 
-        #images, labels = tf.train.shuffle_batch([image, label], batch_size=FLAGS.batch_size, num_threads=2,
-                                               # capacity=50000, min_after_dequeue=10000)
-        images, labels = tf.train.batch([image, label], batch_size=FLAGS.batch_size, num_threads=2,
-                                                capacity=10000)
+        images, labels = tf.train.shuffle_batch([image, label], batch_size=FLAGS.batch_size, num_threads=2,
+                                                capacity=50000, min_after_dequeue=10000)
+        #images, labels = tf.train.batch([image, label], batch_size=FLAGS.batch_size, num_threads=2,
+                                               # capacity=10000)
 
         #input_images=tf.placeholder(tf.float32,shape=[FLAGS.batch_size,image_size,image_size,3])
         #targets=tf.placeholder(tf.float32,shape=[FLAGS.batch_size,FLAGS.num_classes])
@@ -93,8 +94,10 @@ def main(unused_argv):
         with tf.contrib.framework.arg_scope(inception_resnet_v2_arg_scope()):
             logits, _ = inception_resnet_v2(images, num_classes=FLAGS.num_classes, is_training=True)
         predictions_score = tf.nn.sigmoid(logits, name='predictions')
+        tf.summary.histogram('predictions_score',predictions_score)
         cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(labels=labels, logits=logits)
         loss = tf.reduce_mean(cross_entropy)
+        tf.summary.scalar('loss',loss)
 
         global_steps = tf.Variable(0, name='global_steps', trainable=False)
 
@@ -104,20 +107,28 @@ def main(unused_argv):
             variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, trainable_scope)
             variables_to_train.extend(variables)
 
-        #optimizer = tf.train.GradientDescentOptimizer(learning_rate=FLAGS.learning_rate, name='GradientDescent')
-        optimizer = tf.train.AdamOptimizer(learning_rate=FLAGS.learning_rate, name='AdamOptimizer')
-        train_op=optimizer.minimize(loss,global_step=global_steps,var_list=variables_to_train)
+        train_lr=tf.train.exponential_decay(FLAGS.learning_rate,global_steps, 10000,0.90, staircase=True)
+        tf.summary.scalar('train_lr',train_lr)
+        #optimizer = tf.train.GradientDescentOptimizer(learning_rate=train_lr, name='GradientDescent')
+        optimizer = tf.train.AdamOptimizer(learning_rate=train_lr, name='AdamOptimizer')
+        #optimizer = tf.train.AdamOptimizer(learning_rate=FLAGS.learning_rate, name='AdamOptimizer')
+        train_op=optimizer.minimize(loss, global_step=global_steps,var_list=variables_to_train)
 
         prediction_labels=tf.greater_equal(predictions_score,FLAGS.threshold)
         correct_prediction=tf.equal(prediction_labels,tf.equal(labels,1.0))
         correct_prediction=tf.cast(correct_prediction,tf.float32)
         total_accuracy=tf.reduce_mean(correct_prediction)
+        tf.summary.scalar('total_train_accuracy',total_accuracy)
 
         saver=tf.train.Saver(get_variables_to_restore())
-        finetune_model_saver=tf.train.Saver()
-        init=tf.initialize_all_variables()
+        finetune_model_saver = tf.train.Saver()
+        init = tf.initialize_all_variables()
 
         with tf.Session() as sess:
+            # merge all summaries
+            merged_summary = tf.summary.merge_all()
+            train_summary_writer = tf.summary.FileWriter(os.path.join(FLAGS.log_dir, 'train'), sess.graph)
+
             sess.run(init)
             #restore the inception_resnet_v2 model excepting the last layer
             saver.restore(sess, FLAGS.checkpoint)
@@ -131,15 +142,17 @@ def main(unused_argv):
                 #images_batch = sess.run(images)
                 #labels_batch = sess.run(labels)
                 current_step = sess.run(global_steps)
-                _,train_logits,train_predictions_score,train_prediction_labels, train_labels, train_loss, total_train_accuracy = sess.run([train_op, logits, predictions_score,prediction_labels, labels, loss, total_accuracy])
+                _,train_logits,train_predictions_score,train_prediction_labels, train_labels, train_loss, batch_train_accuracy = sess.run([train_op, logits, predictions_score,prediction_labels, labels, loss, total_accuracy])
+                merged=sess.run(merged_summary)
+                train_summary_writer.add_summary(merged,i)
                 #print("train_labels=%s" % train_labels)
                 print('train_logits=%s' % train_logits)
                 print('train_predictions_score=%s' % train_predictions_score)
                 print('train_prediction_labels=%s' % train_prediction_labels)
                 print('train_labels=%s' % train_labels)
-                print('%s step=%d, train_loss=%f, total_train_accuracy=%.5f' % (datetime.now(),current_step+1, train_loss, total_train_accuracy * 100))
+                print('%s step=%d, train_loss=%f, train_accuracy=%.5f' % (datetime.now(),current_step+1, train_loss, batch_train_accuracy * 100))
 
-            finetune_model_saver.save(sess,os.path.join(FLAGS.finetune_output_model_dir,'finetune_model_'+str(current_step+1)+'.ckpt'))
+            finetune_model_saver.save(sess,os.path.join(FLAGS.finetune_output_model_dir,'0130_finetune_model_'+str(current_step+1)+'.ckpt'))
             coord.request_stop()
             coord.join(threads)
             print('Finetune the model Done!')

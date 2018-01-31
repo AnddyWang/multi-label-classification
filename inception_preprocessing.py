@@ -241,8 +241,8 @@ def preprocess_for_train(image, height, width, bbox,
 
 
 def preprocess_for_eval(image, height, width,
-                        central_fraction=0.875, scope=None):
-  """Prepare one image for evaluation.
+                        central_fraction=1.0, scope=None):
+  """Prepare one image for evaluation.0.875
 
   If height and width are specified it would output an image with that size by
   applying resize_bilinear.
