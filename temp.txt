@@ -1,3 +1,7 @@
+/usr/lib64/python2.7/site-packages/h5py/__init__.py:34: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
+  from ._conv import register_converters as _register_converters
+
+
 def variable_summaries(var, name):
   """Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
   with tf.name_scope('summaries'):
