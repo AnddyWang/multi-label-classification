@@ -28,27 +28,38 @@ def parse_single_image(tfrecords_file):
     reader=tf.TFRecordReader()
     filename,serialized_example=reader.read(file_queue)
     #print('filename=%s,serialized_example=%s',filename,serialized_example)
-    feature=tf.parse_single_example(serialized_example, features={
-        'image_data':tf.FixedLenFeature([], tf.string),
-        'image_shape':tf.FixedLenFeature([], tf.string),
-        'image_label':tf.FixedLenFeature([], tf.string)
+    feature=tf.parse_single_example(serialized_example,features={
+        'image_data':tf.FixedLenFeature([],tf.string),
+        'image_height':tf.FixedLenFeature([],tf.int64),
+        'image_width': tf.FixedLenFeature([], tf.int64),
+        'image_channel': tf.FixedLenFeature([], tf.int64),
+        'image_label':tf.FixedLenFeature([],tf.string)
     })
+    #print feature['image_data']
+    #print feature['image_label']
+    image_data = tf.decode_raw(feature['image_data'],tf.uint8)
 
-    image_data = tf.decode_raw(feature['image_data'], tf.uint8)
-    image_shape = tf.decode_raw(feature['image_shape'], tf.int32)
+    image_height = tf.cast(feature['image_height'],tf.int32)
+    image_width = tf.cast(feature['image_width'],tf.int32)
+    image_channel = tf.cast(feature['image_channel'],tf.int32)
+    #print(image_height,image_width,image_channel)
+
+    image_shape = tf.stack([image_height,image_width,image_channel])
+    #image_data = tf.cast(image_data, tf.float32)
     image_data = tf.reshape(image_data, image_shape)
 
-    image_label = tf.decode_raw(feature['image_label'], tf.float32)
-    image_label = tf.reshape(image_label, [FLAGS.num_classes])
+    image_label = tf.decode_raw(feature['image_label'],tf.float32)
+    image_label = tf.reshape(image_label,[FLAGS.num_classes])
 
-    return image_data, image_label, image_shape
+    #print image_data
+    #print image_label
+    return image_data,image_label
+    pass
 
 def main(unused_argv):
     with tf.Graph().as_default():
         #tf.logging.set_verbosity(tf.logging.DEBUG)
-        image, label, image_shape = parse_single_image(FLAGS.val_tfrecords)
-
-        # 为什么需要设置这个呢？？？
+        image, label = parse_single_image(FLAGS.val_tfrecords)
         image.set_shape([None, None, 3])
         #image = tf.image.resize_images(image, [image_size, image_size])
         # Preprocess images
@@ -92,7 +103,6 @@ def main(unused_argv):
 
 
             for i in range(val_steps_per_epoch):
-                print('image_shape={}'.format(sess.run(image_shape)))
                 #image,image_pre=sess.run([image,image_pre])
                 #print(image)
                 #print(image_pre)
@@ -111,7 +121,7 @@ def main(unused_argv):
                 prediction_list.extend(val_predict_labels)
                 label_list.extend(val_labels)
 
-                #print(val_predictions.shape)
+                print(val_predictions.shape)
                 print('val_logits=%s' % val_logits)
                 print('val_labels=%s' % val_labels)
                 print('val_predictions=%s' % (val_predictions))
@@ -120,6 +130,7 @@ def main(unused_argv):
 
             print('np.array(prediction_list).shape={}'.format(np.array(prediction_list).shape))
             print('np.array(label_list).shape={}'.format(np.array(label_list).shape))
+            #print(len(label_list))
             prediction_arr=np.array(prediction_list)
             label_arr=np.array(label_list)
 

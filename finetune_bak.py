@@ -7,8 +7,6 @@ import tensorflow as tf
 from inception_resnet_v2 import inception_resnet_v2
 from inception_resnet_v2 import inception_resnet_v2_arg_scope
 import inception_preprocessing
-#import utils
-
 
 os.environ['CUDA_VISIBLE_DEVICES']='1'
 
@@ -27,25 +25,38 @@ tf.app.flags.DEFINE_float('threshold', 0.5, 'threshold for training and testing'
 
 FLAGS=tf.app.flags.FLAGS
 
-def parse_single_image(tfrecords_file):
-    file_queue=tf.train.string_input_producer([tfrecords_file])
+def parse_single_image(train_tfrecords):
+    file_queue=tf.train.string_input_producer([train_tfrecords])
     reader=tf.TFRecordReader()
     filename,serialized_example=reader.read(file_queue)
     #print('filename=%s,serialized_example=%s',filename,serialized_example)
     feature=tf.parse_single_example(serialized_example,features={
-        'image_data':tf.FixedLenFeature([], tf.string),
-        'image_shape':tf.FixedLenFeature([], tf.string),
-        'image_label':tf.FixedLenFeature([], tf.string)
+        'image_data':tf.FixedLenFeature([],tf.string),
+        'image_height':tf.FixedLenFeature([],tf.int64),
+        'image_width': tf.FixedLenFeature([], tf.int64),
+        'image_channel': tf.FixedLenFeature([], tf.int64),
+        'image_label':tf.FixedLenFeature([],tf.string)
     })
+    #print feature['image_data']
+    #print feature['image_label']
+    image_data=tf.decode_raw(feature['image_data'],tf.uint8)
 
-    image_data = tf.decode_raw(feature['image_data'], tf.uint8)
-    image_shape = tf.decode_raw(feature['image_shape'], tf.int32)
+    image_height=tf.cast(feature['image_height'],tf.int32)
+    image_width=tf.cast(feature['image_width'],tf.int32)
+    image_channel=tf.cast(feature['image_channel'],tf.int32)
+    #print(image_height,image_width,image_channel)
+
+    image_shape=tf.stack([image_height,image_width,image_channel])
+    #image_data = tf.cast(image_data, tf.float32)
     image_data = tf.reshape(image_data, image_shape)
 
-    image_label = tf.decode_raw(feature['image_label'], tf.float32)
-    image_label = tf.reshape(image_label, [FLAGS.num_classes])
+    image_label=tf.decode_raw(feature['image_label'],tf.float32)
+    image_label=tf.reshape(image_label,[FLAGS.num_classes])
 
-    return image_data, image_label, image_shape
+    #print image_data
+    #print image_label
+    return image_data,image_label
+    pass
 
 #config=tf.ConfigProto()
 #config.gpu_options.per_process_gpu_memory_fraction=0.3
@@ -66,7 +77,9 @@ def main(unused_argv):
     with tf.Graph().as_default():
         #tf.logging.set_verbosity(tf.logging.DEBUG)
 
-        image, label, image_shape = parse_single_image(FLAGS.train_tfrecords)
+        image, label = parse_single_image(FLAGS.train_tfrecords)
+        #image.set_shape([None, None, 3])
+        #image = tf.image.resize_images(image, [image_size, image_size])
         # Preprocess images and scaling images
         image = inception_preprocessing.preprocess_image(image, image_size, image_size,
                                                          is_training=True)

@@ -43,15 +43,16 @@ def convert_to_tfrecords(category,image_list):
         for image_file in image_list:
             label_file = os.path.splitext(image_file)[0]+'.txt'
             image_raw = Image.open(image_file)
-            image_arr=np.array(image_raw, np.uint8)
-            image_shape = np.array(image_arr.shape, np.int32)
-            image_data = image_arr.tobytes()
+            image_shape = np.array(image_raw).shape
+            image_data = image_raw.tobytes()
             label = parse_label_to_list(label_file)
 
             # use the example proto
             example = tf.train.Example(features=tf.train.Features(feature={
                 'image_data': tf.train.Feature(bytes_list=tf.train.BytesList(value=[image_data])),
-                'image_shape': tf.train.Feature(bytes_list=tf.train.BytesList(value=[image_shape.tobytes()])),
+                'image_height': tf.train.Feature(int64_list=tf.train.Int64List(value=[image_shape[0]])),
+                'image_width': tf.train.Feature(int64_list=tf.train.Int64List(value=[image_shape[1]])),
+                'image_channel': tf.train.Feature(int64_list=tf.train.Int64List(value=[image_shape[2]])),
                 'image_label': tf.train.Feature(bytes_list=tf.train.BytesList(value=[label]))
             }))
             tf_writer.write(example.SerializeToString())

@@ -1,0 +1,1 @@
+nohup python finetune.py > finetune-0201.log 2>&1 &
