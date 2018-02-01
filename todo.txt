@@ -2,3 +2,6 @@
 2：转换数据格式为tfrecords格式
 3：编写finetune代码
 4：编写测试代码
+
+存在严重bug：
+1）训练时，预测全为False

@@ -19,7 +19,7 @@ tf.app.flags.DEFINE_integer('batch_size', 20, 'the batch size during training th
 tf.app.flags.DEFINE_string('checkpoint','finetune_model_32250.ckpt','checkpoint file')
 tf.app.flags.DEFINE_string('finetune_output_model_dir','finetune_output_model_dir','out model dir')
 tf.app.flags.DEFINE_float('threshold',0.5,'threshold for training and testing')
-tf.app.flags.DEFINE_string('log_dir','log_dir','log dir')
+tf.app.flags.DEFINE_string('multi_label_log_dir','multi_label_log_dir','multi_label_log_dir')
 
 FLAGS=tf.app.flags.FLAGS
 
@@ -100,7 +100,7 @@ def main(unused_argv):
             val_count = 0
             # merge all the summaries
             merged_summary=tf.summary.merge_all()
-            validation_summary_writer=tf.summary.FileWriter(os.path.join(FLAGS.log_dir,'validation'))
+            validation_summary_writer=tf.summary.FileWriter(os.path.join(FLAGS.multi_label_log_dir,'validation'))
 
 
             for i in range(val_steps_per_epoch):

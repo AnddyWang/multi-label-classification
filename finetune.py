@@ -20,7 +20,7 @@ tf.app.flags.DEFINE_integer('batch_size', 16, 'the batch size during training th
 tf.app.flags.DEFINE_integer('epoch', 30, 'the epoch of training')
 tf.app.flags.DEFINE_string('checkpoint', 'inception_resnet_v2_2016_08_30.ckpt', 'checkpoint file')
 tf.app.flags.DEFINE_string('finetune_output_model_dir', 'finetune_output_model_dir', 'finetune out model dir')
-tf.app.flags.DEFINE_string('log_dir','log_dir','log dir')
+tf.app.flags.DEFINE_string('multi_label_log_dir','multi_label_log_dir','multi_label_log_dir')
 tf.app.flags.DEFINE_float('threshold', 0.5, 'threshold for training and testing')
 
 FLAGS=tf.app.flags.FLAGS
@@ -108,10 +108,10 @@ def main(unused_argv):
             variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, trainable_scope)
             variables_to_train.extend(variables)
 
-        train_lr=tf.train.exponential_decay(FLAGS.learning_rate,global_steps, 10000,0.90, staircase=True)
-        tf.summary.scalar('train_lr',train_lr)
+        #train_lr=tf.train.exponential_decay(FLAGS.learning_rate,global_steps, 10000,0.90, staircase=True)
+        #tf.summary.scalar('train_lr',train_lr)
         #optimizer = tf.train.GradientDescentOptimizer(learning_rate=train_lr, name='GradientDescent')
-        optimizer = tf.train.AdamOptimizer(learning_rate=train_lr, name='AdamOptimizer')
+        optimizer = tf.train.AdamOptimizer(learning_rate=FLAGS.learning_rate, name='AdamOptimizer')
         #optimizer = tf.train.AdamOptimizer(learning_rate=FLAGS.learning_rate, name='AdamOptimizer')
         train_op=optimizer.minimize(loss, global_step=global_steps,var_list=variables_to_train)
 
@@ -128,7 +128,7 @@ def main(unused_argv):
         with tf.Session() as sess:
             # merge all summaries
             merged_summary = tf.summary.merge_all()
-            train_summary_writer = tf.summary.FileWriter(os.path.join(FLAGS.log_dir, 'train'), sess.graph)
+            train_summary_writer = tf.summary.FileWriter(os.path.join(FLAGS.multi_label_log_dir, 'train'), sess.graph)
 
             sess.run(init)
             #restore the inception_resnet_v2 model excepting the last layer
